@@ -55,7 +55,13 @@ function buildApp(
     provider: integrationId,
     integrationId,
     connectionIntegrationIds: [integrationId],
-    binding: new PlatformConnectBinding({ integrationId, providerKeys: [integrationId], connect: client }),
+    // As in production: these providers link the org's existing connections.
+    binding: new PlatformConnectBinding({
+      integrationId,
+      providerKeys: [integrationId],
+      connect: client,
+      linkOrgConnectionsAtBoot: true,
+    }),
   }));
   const projectId = options.connectToolsProjectId;
   const source: ConnectToolsSource | { missing: ConnectToolsSetupMissing } = projectId
