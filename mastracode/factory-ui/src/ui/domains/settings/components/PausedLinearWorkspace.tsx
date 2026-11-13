@@ -1,24 +1,24 @@
 import { Badge } from '@mastra/playground-ui/components/Badge';
 import { Button } from '@mastra/playground-ui/components/Button';
 import { SettingsRow } from '@mastra/playground-ui/new/settings';
+import { useState } from 'react';
+
 import type { LinearWorkspaceConnection } from '../../factory/services/linear';
-import type { LinearReconnectResult } from '../hooks/useLinearReconnectResult';
 import { LinearWorkspaceControl } from './LinearWorkspaceControl';
 import { TrashIcon } from '@mastra/playground-ui/icons/TrashIcon';
 
 export function PausedLinearWorkspace({
   workspace,
   count,
-  reconnect,
-  onRetry,
   onRemove,
 }: {
   workspace: LinearWorkspaceConnection;
   count: number;
-  reconnect: LinearReconnectResult;
-  onRetry: () => void;
   onRemove?: () => void;
 }) {
+  // Once Linear's status shows the workspace connected, this row unmounts; a
+  // finished connect that leaves it mounted connected some other workspace.
+  const [error, setError] = useState<string>();
   return (
     <SettingsRow
       label={
@@ -30,15 +30,19 @@ export function PausedLinearWorkspace({
         </span>
       }
       description={`${count} ${count === 1 ? 'project or team' : 'projects and teams'} paused. Reconnect to resume. Your saved routing is kept.`}
-      errorMsg={reconnect.error}
+      errorMsg={error}
     >
       <div className="flex flex-wrap items-center gap-2">
-        {reconnect.unverified && (
-          <Button size="sm" variant="ghost" onClick={onRetry}>
-            Retry
-          </Button>
-        )}
-        <LinearWorkspaceControl workspace={workspace} targeted />
+        <LinearWorkspaceControl
+          workspace={workspace}
+          onFinished={outcome =>
+            setError(
+              outcome === 'done'
+                ? `This workspace is still disconnected. Choose ${workspace.name} when authorizing in Linear.`
+                : undefined,
+            )
+          }
+        />
         {onRemove && (
           <Button
             size="sm"
