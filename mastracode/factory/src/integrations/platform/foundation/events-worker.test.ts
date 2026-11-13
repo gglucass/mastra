@@ -499,6 +499,37 @@ describe('PlatformEventsWorker', () => {
     expect(cursor('connect')).not.toBe(id);
   });
 
+  it('releases its lease on a clean stop, so another replica takes over at once', async () => {
+    const platform = await platformWith([{ id: 'conn-gitlab', integrationId: 'gitlab' }]);
+    const pubsub = new EventEmitterPubSub();
+    const { worker } = await startWorker(platform, { routes: [recordingRoute(platform, 'gitlab').route], pubsub });
+    await subscribed(platform);
+    const leaseKey = 'platform-events:platform';
+    expect(await pubsub.getLeaseOwner(leaseKey)).toEqual(expect.any(String));
+
+    await worker.stop();
+
+    expect(await pubsub.getLeaseOwner(leaseKey)).toBeUndefined();
+    await vi.waitFor(() => expect(platform.openStreams).toBe(0));
+  });
+
+  it('reads only its extra topics when no integration takes connect events', async () => {
+    const platform = await platformWith([]);
+    const received: string[] = [];
+    const { storage, cursor } = memoryStorage();
+    await startWorker(platform, {
+      routes: [],
+      storage,
+      topics: [{ topic: 'github-app', route: async event => void received.push(event.fields.kind!) }],
+    });
+    await subscribed(platform);
+    expect(platform.streamRequests.map(request => request.topic)).toEqual(['github-app']);
+
+    const id = platform.publish('github-app', { kind: 'push', payload: '{}' });
+    await vi.waitFor(() => expect(cursor('github-app')).toBe(id));
+    expect(received).toEqual(['push']);
+  });
+
   it('logs and retries when the events client cannot subscribe at all', async () => {
     const platform = await platformWith([{ id: 'conn-gitlab', integrationId: 'gitlab' }]);
     const gitlab = recordingRoute(platform, 'gitlab');

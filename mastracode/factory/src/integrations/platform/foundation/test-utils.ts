@@ -72,6 +72,8 @@ export class FakePlatform {
   route: (method: string, path: string, body: unknown) => FakeReply | undefined = () => undefined;
   /** `GET /v2/connections/:id/context` bodies, by connection id. */
   readonly contexts = new Map<string, unknown>();
+  /** `GET /v2/connections/:id/credentials` bodies, by connection id. */
+  readonly credentials = new Map<string, unknown>();
   /** Events published per topic, oldest first. */
   readonly topics = new Map<string, FakeTopicEvent[]>();
   /** Cursors the events service answers with 400, as it does for a cursor outside the stream. */
@@ -244,6 +246,11 @@ export class FakePlatform {
     const context = /^\/v2\/connections\/([^/]+)\/context$/.exec(path);
     if (method === 'GET' && context) {
       const body = this.contexts.get(decodeURIComponent(context[1]!));
+      return body === undefined ? problem(404, 'not_found', path) : { status: 200, body };
+    }
+    const credentials = /^\/v2\/connections\/([^/]+)\/credentials$/.exec(path);
+    if (method === 'GET' && credentials) {
+      const body = this.credentials.get(decodeURIComponent(credentials[1]!));
       return body === undefined ? problem(404, 'not_found', path) : { status: 200, body };
     }
     const proxy = /^\/v2\/connections\/([^/]+)\/proxy(\/.*)?$/.exec(path);

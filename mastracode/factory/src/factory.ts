@@ -2702,7 +2702,7 @@ export class MastraFactory {
             ...(this.#projectBoards ? { notRouted: storedBoardsStorage } : {}),
             factoryReady,
             domains,
-            // The Platform GitHub lane only receives pushes through its polling worker.
+            // The Platform GitHub lane receives pushes through its github-app topic subscription.
             ...(this.#environmentBuilds ? { onRepositoryPush: this.#environmentBuilds.onRepositoryPush } : {}),
             ...(githubIntegration ? { sourceControlOwnerId: 'github' } : {}),
           },
@@ -2723,12 +2723,18 @@ export class MastraFactory {
           return route ? [route] : [];
         })
       : [];
+    const eventTopics = hasPlatformCredentials()
+      ? readyContexts.flatMap(({ integration, context }) =>
+          isPlatformConnectEventSource(integration) ? (integration.platformTopicSubscriptions?.(context) ?? []) : [],
+        )
+      : [];
+    const hasEventSources = eventRoutes.length > 0 || eventTopics.length > 0;
     const eventsProjectId = process.env.MASTRA_PROJECT_ID?.trim();
-    if (eventRoutes.length > 0 && !eventsProjectId) {
+    if (hasEventSources && !eventsProjectId) {
       console.warn(
         'MastraFactory: Platform credentials are set but MASTRA_PROJECT_ID is missing, so Platform integrations receive no events.',
       );
-    } else if (eventRoutes.length > 0 && eventsProjectId) {
+    } else if (hasEventSources && eventsProjectId) {
       integrationWorkers.push(
         new PlatformEventsWorker({
           // Built from env like every auto-installed Platform integration's client, so it reads
@@ -2738,6 +2744,7 @@ export class MastraFactory {
           projectId: eventsProjectId,
           storage: integrationStorage.forIntegration(PLATFORM_EVENTS_STORAGE_ID),
           routes: eventRoutes,
+          topics: eventTopics,
         }),
       );
     }

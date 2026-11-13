@@ -10,6 +10,7 @@ import type {
 } from '@mastra/connect';
 import { isLeaseProvider, NoopLeaseProvider } from '@mastra/core/events';
 import type { LeaseProvider, PubSub } from '@mastra/core/events';
+import type { IMastraLogger } from '@mastra/core/logger';
 import { MastraWorker } from '@mastra/core/worker';
 import type { WorkerDeps } from '@mastra/core/worker';
 
@@ -47,6 +48,8 @@ export interface PlatformConnectEventRoute {
 export interface PlatformConnectEventSource {
   /** The integration's route, or null when it takes no events in this context. */
   connectEventRoute(ctx: IntegrationContext): PlatformConnectEventRoute | null;
+  /** Other topics the integration reads through the deployment's events worker. */
+  platformTopicSubscriptions?(ctx: IntegrationContext): readonly PlatformTopicSubscription[];
 }
 
 export function isPlatformConnectEventSource(value: unknown): value is PlatformConnectEventSource {
@@ -57,11 +60,15 @@ export function isPlatformConnectEventSource(value: unknown): value is PlatformC
   );
 }
 
+export interface PlatformTopicEventContext {
+  logger?: IMastraLogger;
+}
+
 /** An additional topic the worker reads, with its own cursor. */
 export interface PlatformTopicSubscription {
   topic: string;
   /** Handles one event. Must be idempotent: delivery is at-least-once. */
-  route(event: TopicEvent): Promise<void>;
+  route(event: TopicEvent, context: PlatformTopicEventContext): Promise<void>;
   /** Called when the topic is read without a cursor, or after a gap, to cover what may have been missed. */
   reconcile?(): void;
 }
@@ -191,19 +198,23 @@ export class PlatformEventsWorker extends MastraWorker {
 
     const routes = [...new Set(this.#routes.values())];
     this.#runners = [
-      topicRunner(
-        CONNECT_TOPIC,
-        options => this.#events.connectEvents(options),
-        event => this.#handleConnectEvent(event),
-        () => {
-          for (const route of routes) route.reconcile();
-        },
-      ),
+      ...(routes.length > 0
+        ? [
+            topicRunner(
+              CONNECT_TOPIC,
+              options => this.#events.connectEvents(options),
+              event => this.#handleConnectEvent(event),
+              () => {
+                for (const route of routes) route.reconcile();
+              },
+            ),
+          ]
+        : []),
       ...(config.topics ?? []).map(subscription =>
         topicRunner(
           subscription.topic,
           options => this.#events.subscribe(subscription.topic, options),
-          event => subscription.route(event),
+          event => subscription.route(event, { logger: this.deps?.logger }),
           () => subscription.reconcile?.(),
         ),
       ),
@@ -232,8 +243,10 @@ export class PlatformEventsWorker extends MastraWorker {
     this.#running = false;
     if (this.#leaseRetryTimer) clearTimeout(this.#leaseRetryTimer);
     this.#leaseRetryTimer = undefined;
+    // Closing the subscriptions clears `#hasLease`, so read it first.
+    const held = this.#hasLease;
     await this.#closeSubscriptions();
-    if (this.#hasLease) {
+    if (held) {
       await this.#leaseProvider.releaseLease(this.#leaseKey(), this.#leaseOwner).catch(() => undefined);
       this.#hasLease = false;
     }
