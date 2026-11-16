@@ -72,7 +72,10 @@ export class FakePlatform {
   route: (method: string, path: string, body: unknown) => FakeReply | undefined = () => undefined;
   /** `GET /v2/connections/:id/context` bodies, by connection id. */
   readonly contexts = new Map<string, unknown>();
-  /** `GET /v2/connections/:id/credentials` bodies, by connection id. */
+  /**
+   * `GET /v2/connections/:id/credentials` bodies, by connection id. An
+   * `accessToken` here is also what `POST .../github/installation-token` mints.
+   */
   readonly credentials = new Map<string, unknown>();
   /** Events published per topic, oldest first. */
   readonly topics = new Map<string, FakeTopicEvent[]>();
@@ -247,6 +250,24 @@ export class FakePlatform {
     if (method === 'GET' && context) {
       const body = this.contexts.get(decodeURIComponent(context[1]!));
       return body === undefined ? problem(404, 'not_found', path) : { status: 200, body };
+    }
+    const mint = /^\/v2\/connections\/([^/]+)\/github\/installation-token$/.exec(path);
+    if (method === 'POST' && mint) {
+      // A GitHub App connection's installation token is its credential's
+      // token; a narrowed one names its repositories so tests can tell them apart.
+      const credential = this.credentials.get(decodeURIComponent(mint[1]!)) as
+        { accessToken?: string; expiresAt?: string } | undefined;
+      if (!credential?.accessToken) return problem(404, 'not_found', path);
+      const { repositories } = (body ?? {}) as { repositories?: string[] };
+      return {
+        status: 200,
+        body: {
+          token: repositories ? `${credential.accessToken}@${repositories.join(',')}` : credential.accessToken,
+          expiresAt: credential.expiresAt ?? '2099-01-01T00:00:00.000Z',
+          permissions: {},
+          repositorySelection: repositories ? 'selected' : 'all',
+        },
+      };
     }
     const credentials = /^\/v2\/connections\/([^/]+)\/credentials$/.exec(path);
     if (method === 'GET' && credentials) {
