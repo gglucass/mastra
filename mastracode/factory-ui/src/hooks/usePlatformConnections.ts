@@ -52,6 +52,9 @@ function useInvalidateProviderState(provider: PlatformConnectProviderId) {
             queryClient.invalidateQueries({ queryKey: ['linear', 'issue'] }),
           ]
         : []),
+      ...(provider === 'factory-github' || provider === 'factory-reviews-github'
+        ? [queryClient.invalidateQueries({ queryKey: queryKeys.githubSwitch() })]
+        : []),
       ...(provider === 'gitlab'
         ? [
             queryClient.invalidateQueries({ queryKey: ['gitlab', 'status'] }),
