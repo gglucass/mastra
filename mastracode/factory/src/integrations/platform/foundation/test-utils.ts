@@ -28,6 +28,8 @@ export interface FakePlatformRequest {
   path: string;
   /** The JSON request body, when there was one. */
   body?: unknown;
+  /** The end user the request was scoped to (`x-mastra-resource-id`), when it was. */
+  resourceId?: string;
 }
 
 /** A subscription the fake events service received. */
@@ -171,7 +173,13 @@ export class FakePlatform {
     const method = req.method ?? 'GET';
     const url = new URL(req.url ?? '/', 'http://platform');
     const path = url.pathname;
-    this.requests.push({ method, path, ...(body === undefined ? {} : { body }) });
+    const resourceId = req.headers['x-mastra-resource-id'];
+    this.requests.push({
+      method,
+      path,
+      ...(body === undefined ? {} : { body }),
+      ...(typeof resourceId === 'string' ? { resourceId } : {}),
+    });
     const reply = this.route(method, path, body) ?? this.#route(method, path, url.searchParams, body);
     res.statusCode = reply.status;
     for (const [name, value] of Object.entries(reply.headers ?? {})) res.setHeader(name, value);
