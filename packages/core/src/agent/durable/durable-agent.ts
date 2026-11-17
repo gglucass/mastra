@@ -95,7 +95,6 @@ import {
 import { runDurableStreamUntilIdle, runResumeDurableStreamUntilIdle } from './durable-stream-until-idle';
 import { DurableExecutionEngine, latestMessageListState } from './execution-engine';
 import {
-  EXECUTION_ABANDONED_ERROR_ID,
   EXECUTION_UNVERIFIED_ERROR_ID,
   DurableExecutionFenceError,
   ExecutionFence,
