@@ -332,6 +332,7 @@ describe('PlatformLinearIntegration through the events worker', () => {
     let saved: unknown = null;
     const worker = new PlatformEventsWorker({
       events: fake.platform.connect().events,
+      projectId: fake.platform.projectId,
       storage: {
         integrationId: 'platform-events',
         settings: {
