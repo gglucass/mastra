@@ -1,5 +1,56 @@
 # @mastra/playground-ui
 
+## 70.0.0-alpha.7
+
+### Minor Changes
+
+- Clicking a Knowledge page in the graph now shows a short peek with its link and note counts, a preview of the body, its connections and the latest note. The full page's side column adds On this page, built from the body's headings, and Connections, listing the pages it links to and the notes that mention it. ([#30706](https://github.com/mastra-ai/mastra/pull/30706))
+
+- `LogDataPanel` accepts an `actions` prop to render extra controls in its header, next to the previous and next buttons. ([#30244](https://github.com/mastra-ai/mastra/pull/30244))
+
+  ```tsx
+  <LogDataPanel {...panelProps} actions={<Button onClick={() => askAbout(log)}>Ask about this log</Button>} />
+  ```
+
+  Fixed the Metrics page's model drilldown: clicking a model in the usage card now opens traces that used that model, instead of every trace in the time range.
+
+- Added content filters with matching histograms for supporting hosts. ([#30511](https://github.com/mastra-ai/mastra/pull/30511))
+
+- Added `CardInset`, a sunken panel for a list of rows inside a `Card` or a dialog. The panel pads each row and draws a divider between them, so plain elements and `SettingsRow`s both work as rows. ([#30699](https://github.com/mastra-ai/mastra/pull/30699))
+
+  ```tsx
+  <DialogBody>
+    <CardInset>
+      <div>Source</div>
+      <div>Schedule</div>
+    </CardInset>
+  </DialogBody>
+  ```
+
+  Removed `SectionCard` and `CardHeading`. Build settings sections with the settings components instead:
+
+  ```tsx
+  // Before
+  <SectionCard title="Channels" description="Providers available to publish flows">
+    {rows}
+  </SectionCard>
+
+  // After
+  <SettingsGroup>
+    <SettingsTitle info="Providers available to publish flows">Channels</SettingsTitle>
+    <SettingsContainer>{rows}</SettingsContainer>
+  </SettingsGroup>
+  ```
+
+### Patch Changes
+
+- `CodeDiff` with a file header now shows its lines flush against the header and the card's bottom edge, so stacked diffs in a `CodeDiffList` read like a pull request with no blank band above the first line or below the last. The horizontal scrollbar only takes room when lines overflow, and none on platforms with overlay scrollbars. Diffs without a header keep their padding. ([#30668](https://github.com/mastra-ai/mastra/pull/30668))
+
+- Updated dependencies [[`5053f97`](https://github.com/mastra-ai/mastra/commit/5053f97664afec569f908f266e04865cbae51868), [`8ce66cf`](https://github.com/mastra-ai/mastra/commit/8ce66cf4a19e23d5bd73cd861465d89bd0ee8065), [`8ce66cf`](https://github.com/mastra-ai/mastra/commit/8ce66cf4a19e23d5bd73cd861465d89bd0ee8065), [`bf60feb`](https://github.com/mastra-ai/mastra/commit/bf60feb162e5a4482a7c6767d14a17f9dce212a8), [`984a8cf`](https://github.com/mastra-ai/mastra/commit/984a8cfd7bc751c3cd4421fb6516482fa863174b), [`d5b0012`](https://github.com/mastra-ai/mastra/commit/d5b00123c6098104eda0eb8d39ef0e139a0fe3e3), [`189c5dd`](https://github.com/mastra-ai/mastra/commit/189c5ddc674843e4fa67ad8bf03c2c1b9ae7b658), [`d5f3546`](https://github.com/mastra-ai/mastra/commit/d5f35468273369ae7d4699d856f5db69e871c8db), [`bbc22ce`](https://github.com/mastra-ai/mastra/commit/bbc22ce1036a18c3d235a556883844b81fe2fecc), [`d5b0012`](https://github.com/mastra-ai/mastra/commit/d5b00123c6098104eda0eb8d39ef0e139a0fe3e3), [`4e206cf`](https://github.com/mastra-ai/mastra/commit/4e206cf1d2e486be84e0de9a9c8dbfd8bedeb222)]:
+  - @mastra/core@1.84.0-alpha.7
+  - @mastra/client-js@1.61.0-alpha.7
+  - @mastra/react@1.15.1-alpha.7
+
 ## 69.1.0-alpha.6
 
 ### Patch Changes
